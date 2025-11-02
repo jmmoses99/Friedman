@@ -1,0 +1,18 @@
+Package: IDPsBio
+Title: What the Package Does (Helps to Analyze IDPs and IDRs)
+Version: 0.0.0.9000
+Authors@R: 
+    person("Janae", "Moses-Soto", , "jmmosessoto@usf.edu", role = c("aut", "cre"))
+Description: This package provides additional functions for data analysis of IDPs and IDPRs.
+         It will incorporate various biological methods
+         and visualization tools.
+Depends:R(>= 3.1.2)
+Imports: Biostrings, idpr, ggplot2, dplyr
+License: R(Use CC0)
+LazyData: True
+URL:https://github.com/jmmoses99
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+
+
