@@ -1,27 +1,39 @@
 # Function for parallel processing
 
+# parallel_processing_backend.R
 #' @keywords internal
+#' @import BiocParallel
 
-parallel_backend <- function(){
+parallel_backend <- function() {
 
-  # Detect number of cores, leaving 1 free
-  # Very critical because it prevents all cores from being used on parallel processing;
-  #ensures at least 1 core is used even on single-core systems
-
+  # Detect number of cores, leave 1 free
   cores <- max(parallel::detectCores() - 1, 1)
 
-  # Calls internal Utility Function to detect macOs and then decides between
-  # MulticoreParam for Mac/Linux or SnowParam for Windows
-  # Had to add (check_systems = TRUE) otherwise .detect_macOs_internal passes NULL and error
-
+  # Choose backend depending on OS
   if (.detect_macOs_internal(check_systems = TRUE)) {
     BPPARAM <- BiocParallel::MulticoreParam(workers = cores)
   } else {
     BPPARAM <- BiocParallel::SnowParam(workers = cores)
+
+    # Automatically load required packages and functions on each worker
+    parallel::clusterEvalQ(BPPARAM$workers, {
+      # Load required packages
+      require(IDPsBio)
+      require(Biostrings)
+
+      # Export utility functions to workers
+
+      assign("cleaned_protein_seq_aa", IDPsBio::cleaned_protein_seq_aa, envir = .GlobalEnv)
+      assign("idprofile", IDPsBio::idprofile, envir = .GlobalEnv)
+      assign("iupred", IDPsBio::iupred, envir = .GlobalEnv)
+      assign("iupredRedox", IDPsBio::iupredRedox, envir = .GlobalEnv)
+      assign("chargeCalculationLocal", IDPsBio::chargeCalculationLocal, envir = .GlobalEnv)
+      assign("chargeCalculationGlobal", IDPsBio::chargeCalculationGlobal, envir = .GlobalEnv)
+      assign("foldIndexR", IDPsBio::foldIndexR, envir = .GlobalEnv)
+      assign("scaledHydropathyLocal", IDPsBio::scaledHydropathyLocal, envir = .GlobalEnv)
+      assign("meanScaledHydropathy", IDPsBio::meanScaledHydropathy, envir = .GlobalEnv)
+    })
   }
 
-  return(BPPARAM) # Explicitly returns the BiocParallelParam object
+  return(BPPARAM)
 }
-
-
-

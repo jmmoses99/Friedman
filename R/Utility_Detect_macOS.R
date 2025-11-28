@@ -1,47 +1,26 @@
 # Function for parallel processing; Need to install Bioconductor
 # Utility Functions for parallel back end selection
  #' @keywords internal  (helper)
- #' @import BiocParallel
 
-#BiocParallel
-BiocParallel::bplapply
+.detect_macOs_internal <- function(systems = NULL, cores = 2, check_systems = FALSE) {
 
-
-# Detection of System/Correct BiocParallel Back end
-# Set up Cluster/Auto-Detect OS function
-# Parallel processing requires you to understand the processing power of the computer you are using
-
-# Internal Utility for parallel macOS detection
-.detect_macOs_internal <- function(systems = NULL, cores = 2, check_systems = FALSE){
-
-  if(check_systems){
-    return(Sys.info()["sysname"]=="Darwin")
+  # Simple, safe OS check
+  if (check_systems) {
+    return(Sys.info()[["sysname"]] == "Darwin")
   }
 
-  if(is.null(systems)) stop("Please provide vector of system strings")
-
-  # Only use available CPU cores
-  max_cores <- parallel::detectCores()
-  cores <- min(cores, max_cores)
-  if(cores < 1) cores <- 1  # Ensure at least 1 core
-
-  # Choose backend: Multicore for macOs/Linux and Snow for Windows
-  cluster <- if(.Platform$OS.type == "windows") {
-    SnowParam(workers = cores)
-  } else {
-    MulticoreParam(workers = cores)
+  # If using the vector-check mode:
+  if (is.null(systems)) {
+    stop("Please provide vector of system strings")
   }
 
-  # Detection function for macOs/Parallel execution
-  results <- bplapply(
+  # This DOES NOT use parallel processing (safe on macOS)
+
+  results <- vapply(
     systems,
-    function(x){
-      # explicitly making sure stats package is loaded in each worker
-
-      base::grepl("Macintosh|Darwin", x, ignore.case = TRUE)
-    },
-    BPPARAM = cluster
+    function(x) grepl("Macintosh|Darwin", x, ignore.case = TRUE),
+    logical(1)
   )
 
-  return(unlist(results))
+  return(results)
 }
