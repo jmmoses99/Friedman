@@ -1,18 +1,25 @@
 Package: IDPsBio
-Title: What the Package Does (Helps to Analyze IDPs and IDRs)
+Title: Tools for Parallel Processing and Analysis of Intrinsically Disordered Proteins
 Version: 0.0.0.9000
 Authors@R: 
     person("Janae", "Moses-Soto", , "jmmosessoto@usf.edu", role = c("aut", "cre"))
-Description: This package provides additional functions for data analysis of IDPs and IDPRs.
-         It will incorporate various biological methods
-         and visualization tools.
-Depends:R(>= 3.1.2)
-Imports: Biostrings, idpr, ggplot2, dplyr
-License: R(Use CC0)
+Description: This package provides additional functions for data analysis of intrinsically disordered proteins (IDPs)
+         and intrinsically disordered regions (IDPRs).
+         It includes utilities for batch processing, data validation, 
+         sequence cleaning, and integration with the 'idpr' package.
+         Parallel processing is supported via the BiocParallel framework to
+         efficiently handle large proteome-scale data sets.
+Depends: 
+    R (>= 3.5)
+Imports: idpr, BiocParallel,openxlsx,
+License: CC0
 LazyData: True
-URL:https://github.com/jmmoses99
+URL: https://github.com/jmmoses99
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-
-
+Suggests: Testthat(>= 3.0.0), knitr, rmarkdown, Biostrings,
+biocViews: Proteomics, SequenceAnalysis, Software, Infrastructure 
+BuildIgnore:
+    data-raw,
+    fasta_test

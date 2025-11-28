@@ -1,2 +1,4 @@
 ^Friedman\.Rproj$
 ^\.Rproj\.user$
+^data-raw$
+^fasta_test$
