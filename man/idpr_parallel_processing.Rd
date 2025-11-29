@@ -2,53 +2,43 @@
 % Please edit documentation in R/idpr_parallel_processing.R
 \name{idpr_parallel_processing}
 \alias{idpr_parallel_processing}
-\title{Parallel Processing Wrapper for intrinsically disordered proteins (IDPs) and intrinsically disordered regions (IDRs)}
+\title{Parallel execution of IDPsBio functions on a protein set}
 \usage{
-idpr_parallel_processing(idpr_functions, valid_functions, input, BPPARAM)
+idpr_parallel_processing(
+  idpr_functions,
+  valid_functions,
+  input,
+  BPPARAM = parallel_backend()
+)
 }
 \arguments{
-\item{idpr_functions}{Character vector of IDPR function names to run.}
+\item{idpr_functions}{Character vector of functions to run (must be valid functions)}
 
-\item{valid_functions}{Character vector listing all valid allowed functions.}
+\item{valid_functions}{Character vector of valid function names (used for validation)}
 
-\item{input}{Named character vector of protein sequences, where
-names correspond to accession IDs from UniProt.}
+\item{input}{Named character vector of protein sequences}
 
-\item{BPPARAM}{A BiocParallel parameter object (e.g. from
-\code{parallel_processing_backend()}).}
+\item{BPPARAM}{A BiocParallelParam object (default: \code{parallel_backend()})}
 }
 \value{
-A list where each element contains:
-\describe{
-\item{accession}{Protein accession ID}
-\item{\if{html}{\out{<function>}}}{Output of each IDPR function requested}
-}
+A list of results, one element per input sequence. Each element
+is a named list with entries for each requested function.
 }
 \description{
-This function runs multiple IDPR analyses in parallel over
-a set of protein sequences. It performs sequence cleaning, input validation,
-and dispatches tasks using a BiocParallel backend.
-}
-\details{
-This function automatically:
-\itemize{
-\item Cleans protein sequences using \code{cleaned_protein_seq_aa()}
-\item Validates input using \code{validate_idpr_functions()}
-\item Runs selected IDPR computations in parallel
-\item Handles errors safely using \code{tryCatch()}
-}
-The input must be a \emph{named} vector, where each entry corresponds to one protein sequence.
+This function runs selected IDPsBio functions in parallel over a named vector of
+protein sequences. It supports Windows, macOS, and Linux backends through BiocParallel.
+Avoids relying on \code{library()} in workers; functions are explicitly passed.
+Run multiple IDPR computations in parallel
+
+This function runs a set of IDPR-related functions on a collection of
+protein sequences in parallel using BiocParallel.
 }
 \examples{
-# Fake UniProt-style accessions and example sequences
-sequences <- c(
-  "P12345" = "MKTFFVAGA",
-  "Q9XYZ1" = "ACDEFGHIKLMNPQRSTVWY"
-)
 
+\dontrun{
+sequences <- c("P12345" = "MKTFFVAGA", "Q9XYZ1" = "ACDEFGHIKLMNPQRSTVWY")
 idpr_functions <- c("idprofile", "chargeCalculationLocal")
 valid_functions <- idpr_functions
-
 if (requireNamespace("BiocParallel", quietly = TRUE)) {
   BPPARAM <- BiocParallel::SnowParam(1)
   results <- idpr_parallel_processing(
@@ -59,5 +49,5 @@ if (requireNamespace("BiocParallel", quietly = TRUE)) {
   )
   str(results)
 }
-
+}
 }

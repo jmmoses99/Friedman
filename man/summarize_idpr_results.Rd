@@ -2,12 +2,7 @@
 % Please edit documentation in R/summarize_idpr_results.R
 \name{summarize_idpr_results}
 \alias{summarize_idpr_results}
-\title{Function to help summarize all protein computation results to include a protein-level summary and a Data set Level summary
-writes it into Summary files
-This function takes the output list from \code{idpr_parallel_processing()}
-and produces a summarized table containing key metrics for a protein-level summary of each protein
-and a data-set level summary, where the entire data set is taken into account.
-Aggregates multiple IDPR computation outputs into summary tables for further analysis.}
+\title{Summarize IDPR Results}
 \usage{
 summarize_idpr_results(
   results,
@@ -17,48 +12,47 @@ summarize_idpr_results(
 )
 }
 \arguments{
-\item{results}{A list of results from \code{idpr_parallel_processing()}.}
+\item{results}{List. Output from \code{idpr_parallel_processing()}.}
 
-\item{protein_outfile}{Optional file path to save per-protein summary results as CSV.}
+\item{protein_outfile}{Character. Path to save per-protein summary (optional).}
 
-\item{dataset_outfile}{Optional file path to save dataset-level summary results as CSV.}
+\item{dataset_outfile}{Character. Path to save dataset summary (optional).}
 
-\item{file_type}{Character, format to write files, e.g., "csv".}
+\item{file_type}{Character. File type to save ("csv" or "tsv"). Default is "csv".}
 }
 \value{
-A list with two elements:
+A list containing:
 \describe{
-\item{protein_summary}{Data frame with per-protein summary statistics.}
-\item{dataset_summary}{Data frame with dataset-level summary statistics.}
+\item{protein_summary}{Data frame with per-protein metrics.}
+\item{dataset_summary}{Data frame summarizing the entire dataset.}
 }
 }
 \description{
-Function to help summarize all protein computation results to include a protein-level summary and a Data set Level summary
-writes it into Summary files
-This function takes the output list from \code{idpr_parallel_processing()}
-and produces a summarized table containing key metrics for a protein-level summary of each protein
-and a data-set level summary, where the entire data set is taken into account.
-Aggregates multiple IDPR computation outputs into summary tables for further analysis.
+Takes the output list from \code{idpr_parallel_processing()} and produces summarized
+tables containing key metrics for each protein and for the entire dataset.
 }
 \examples{
-\donttest{
 sequences <- c(
   "P12345" = "MKTFFVAGA",
   "Q9XYZ1" = "ACDEFGHIKLMNPQRSTVWY"
 )
-
 idpr_functions <- c("idprofile", "chargeCalculationLocal")
 valid_functions <- idpr_functions
-
-if (requireNamespace("BiocParallel", quietly = TRUE)) {
-  BPPARAM <- BiocParallel::SnowParam(1)
-  results <- idpr_parallel_processing(
+\dontrun{
+  if (requireNamespace("BiocParallel", quietly = TRUE)) {
+    BPPARAM <- BiocParallel::SnowParam(1)
+    results <- idpr_parallel_processing(
       idpr_functions = idpr_functions,
       valid_functions = valid_functions,
       input = sequences,
       BPPARAM = BPPARAM
-  )
-  str(results)
+    )
+    summarize_idpr_results(
+      results,
+      protein_outfile = "protein_summary.csv",
+      dataset_outfile = "dataset_summary.csv"
+    )
+  }
 }
-}
+
 }

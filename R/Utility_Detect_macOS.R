@@ -1,26 +1,34 @@
 # Function for parallel processing; Need to install Bioconductor
 # Utility Functions for parallel back end selection
- #' @keywords internal  (helper)
+#' Internal function to detect macOS systems
+#' This is an internal helper function used by IDPsBio to detect macOS.
+#' Detect macOS Systems (Internal)
+#' It returns `TRUE` if the system is macOS, otherwise `FALSE`.
+#'
+#' @param cores Integer; number of cores (currently unused, reserved for future parallel use)
+#' @param check_systems Logical; if `TRUE`, perform a simple system check
+#'
+#' @return Logical indicating if the system is macOS
+#' @keywords internal
+#' @name detect_macOs_internal
+NULL
 
-.detect_macOs_internal <- function(systems = NULL, cores = 2, check_systems = FALSE) {
+.detect_macOs_internal <- function(cores = 4, check_systems = FALSE) {
+  # cores argument is kept for backward compatibility, but not used
+  # check_systems must be a single logical value
+  if (!is.logical(check_systems) || length(check_systems) != 1) {
+    stop("'check_systems' must be a single logical value (TRUE/FALSE)")
+  }
 
-  # Simple, safe OS check
+  # Detect current OS
+  current_system <- Sys.info()[["sysname"]]
+
+  # If simple check requested, return TRUE if Darwin/Macintosh
   if (check_systems) {
-    return(Sys.info()[["sysname"]] == "Darwin")
+    return(current_system %in% c("Darwin", "Macintosh"))
   }
 
-  # If using the vector-check mode:
-  if (is.null(systems)) {
-    stop("Please provide vector of system strings")
-  }
-
-  # This DOES NOT use parallel processing (safe on macOS)
-
-  results <- vapply(
-    systems,
-    function(x) grepl("Macintosh|Darwin", x, ignore.case = TRUE),
-    logical(1)
-  )
-
+  # Otherwise, return a vectorized check (still just one element here)
+  results <- grepl("Macintosh|Darwin", current_system, ignore.case = TRUE)
   return(results)
 }

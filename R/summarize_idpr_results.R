@@ -1,51 +1,45 @@
-#'Function to help summarize all protein computation results to include a protein-level summary and a Data set Level summary
-#' writes it into Summary files
-
-#' This function takes the output list from \code{idpr_parallel_processing()}
-#' and produces a summarized table containing key metrics for a protein-level summary of each protein
-#' and a data-set level summary, where the entire data set is taken into account.
-
-#' Aggregates multiple IDPR computation outputs into summary tables for further analysis.
+#' Summarize IDPR Results
 #'
-#' @param results A list of results from `idpr_parallel_processing()`.
-#' @param protein_outfile Optional file path to save per-protein summary results as CSV.
-#' @param dataset_outfile Optional file path to save dataset-level summary results as CSV.
-#' @param file_type Character, format to write files, e.g., "csv".
+#' Takes the output list from `idpr_parallel_processing()` and produces summarized
+#' tables containing key metrics for each protein and for the entire dataset.
 #'
-#' @return A list with two elements:
-#'   \describe{
-#'     \item{protein_summary}{Data frame with per-protein summary statistics.}
-#'     \item{dataset_summary}{Data frame with dataset-level summary statistics.}
-#'   }
+#' @param results List. Output from `idpr_parallel_processing()`.
+#' @param protein_outfile Character. Path to save per-protein summary (optional).
+#' @param dataset_outfile Character. Path to save dataset summary (optional).
+#' @param file_type Character. File type to save ("csv" or "tsv"). Default is "csv".
 #'
-
+#' @return A list containing:
+#' \describe{
+#'   \item{protein_summary}{Data frame with per-protein metrics.}
+#'   \item{dataset_summary}{Data frame summarizing the entire dataset.}
+#' }
+#'
 #' @examples
-#' \donttest{
 #' sequences <- c(
 #'   "P12345" = "MKTFFVAGA",
 #'   "Q9XYZ1" = "ACDEFGHIKLMNPQRSTVWY"
 #' )
-#'
 #' idpr_functions <- c("idprofile", "chargeCalculationLocal")
 #' valid_functions <- idpr_functions
-#'
-#' if (requireNamespace("BiocParallel", quietly = TRUE)) {
-#'   BPPARAM <- BiocParallel::SnowParam(1)
-#'   results <- idpr_parallel_processing(
+#' \dontrun{
+#'   if (requireNamespace("BiocParallel", quietly = TRUE)) {
+#'     BPPARAM <- BiocParallel::SnowParam(1)
+#'     results <- idpr_parallel_processing(
 #'       idpr_functions = idpr_functions,
 #'       valid_functions = valid_functions,
 #'       input = sequences,
 #'       BPPARAM = BPPARAM
-#'   )
-#'   str(results)
+#'     )
+#'     summarize_idpr_results(
+#'       results,
+#'       protein_outfile = "protein_summary.csv",
+#'       dataset_outfile = "dataset_summary.csv"
+#'     )
+#'   }
 #' }
-#' }
-
+#'
+#' @importFrom stats median sd
 #' @export
-
-
-
-
 summarize_idpr_results <- function(results,
                                  protein_outfile = "protein-level_summary.xlsx",
                                  dataset_outfile = "dataset-level_summary.xlsx",
