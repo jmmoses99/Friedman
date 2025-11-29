@@ -13,7 +13,7 @@
 #' @name detect_macOs_internal
 NULL
 
-.detect_macOs_internal <- function(cores = 4, check_systems = FALSE) {
+.detect_macOs_internal <- function(check_systems = FALSE, cores = 2) {
   # cores argument is kept for backward compatibility, but not used
   # check_systems must be a single logical value
   if (!is.logical(check_systems) || length(check_systems) != 1) {
