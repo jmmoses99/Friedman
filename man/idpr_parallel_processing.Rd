@@ -2,52 +2,29 @@
 % Please edit documentation in R/idpr_parallel_processing.R
 \name{idpr_parallel_processing}
 \alias{idpr_parallel_processing}
-\title{Parallel execution of IDPsBio functions on a protein set}
+\title{Parallel processing for IDPR functions
+Safely parallelizes numeric-returning IDPR functions while running plotting functions sequentially.}
 \usage{
 idpr_parallel_processing(
+  sequences,
   idpr_functions,
-  valid_functions,
-  input,
-  BPPARAM = parallel_backend()
+  accessions = NULL,
+  BPPARAM = BiocParallel::bpparam()
 )
 }
 \arguments{
-\item{idpr_functions}{Character vector of functions to run (must be valid functions)}
+\item{sequences}{Character vector of protein sequences}
 
-\item{valid_functions}{Character vector of valid function names (used for validation)}
+\item{idpr_functions}{Character vector of IDPR function names to run}
 
-\item{input}{Named character vector of protein sequences}
+\item{accessions}{Optional character vector of UniProt accessions}
 
-\item{BPPARAM}{A BiocParallelParam object (default: \code{parallel_backend()})}
+\item{BPPARAM}{BiocParallel backend (default uses internal \code{parallel_backend()})}
 }
 \value{
-A list of results, one element per input sequence. Each element
-is a named list with entries for each requested function.
+List of results for each sequence
 }
 \description{
-This function runs selected IDPsBio functions in parallel over a named vector of
-protein sequences. It supports Windows, macOS, and Linux backends through BiocParallel.
-Avoids relying on \code{library()} in workers; functions are explicitly passed.
-Run multiple IDPR computations in parallel
-
-This function runs a set of IDPR-related functions on a collection of
-protein sequences in parallel using BiocParallel.
-}
-\examples{
-
-\dontrun{
-sequences <- c("P12345" = "MKTFFVAGA", "Q9XYZ1" = "ACDEFGHIKLMNPQRSTVWY")
-idpr_functions <- c("idprofile", "chargeCalculationLocal")
-valid_functions <- idpr_functions
-if (requireNamespace("BiocParallel", quietly = TRUE)) {
-  BPPARAM <- BiocParallel::SnowParam(1)
-  results <- idpr_parallel_processing(
-      idpr_functions = idpr_functions,
-      valid_functions = valid_functions,
-      input = sequences,
-      BPPARAM = BPPARAM
-  )
-  str(results)
-}
-}
+Parallel processing for IDPR functions
+Safely parallelizes numeric-returning IDPR functions while running plotting functions sequentially.
 }

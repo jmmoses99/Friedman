@@ -1,157 +1,157 @@
-#' Parallel execution of IDPsBio functions on a protein set
+#' Parallel processing for IDPR functions
+#'Safely parallelizes numeric-returning IDPR functions while running plotting functions sequentially.
 #'
-#' @description
-#' This function runs selected IDPsBio functions in parallel over a named vector of
-#' protein sequences. It supports Windows, macOS, and Linux backends through BiocParallel.
-#' Avoids relying on `library()` in workers; functions are explicitly passed.
-#'Run multiple IDPR computations in parallel
+#' @param sequences Character vector of protein sequences
+#' @param idpr_functions Character vector of IDPR function names to run
+#' @param accessions Optional character vector of UniProt accessions
+#' @param BPPARAM BiocParallel backend (default uses internal `parallel_backend()`)
+#' @return List of results for each sequence
+#' @import idpr
 #'
-#' This function runs a set of IDPR-related functions on a collection of
-#' protein sequences in parallel using BiocParallel.
-#'
-#' @param idpr_functions Character vector of functions to run (must be valid functions)
-#' @param valid_functions Character vector of valid function names (used for validation)
-#' @param input Named character vector of protein sequences
-#' @param BPPARAM A BiocParallelParam object (default: `parallel_backend()`)
-#'
-#' @return A list of results, one element per input sequence. Each element
-#'   is a named list with entries for each requested function.
-#'
-#' @examples
-#'
-#' \dontrun{
-#' sequences <- c("P12345" = "MKTFFVAGA", "Q9XYZ1" = "ACDEFGHIKLMNPQRSTVWY")
-#' idpr_functions <- c("idprofile", "chargeCalculationLocal")
-#' valid_functions <- idpr_functions
-#' if (requireNamespace("BiocParallel", quietly = TRUE)) {
-#'   BPPARAM <- BiocParallel::SnowParam(1)
-#'   results <- idpr_parallel_processing(
-#'       idpr_functions = idpr_functions,
-#'       valid_functions = valid_functions,
-#'       input = sequences,
-#'       BPPARAM = BPPARAM
-#'   )
-#'   str(results)
-#' }
-#' }
 #' @export
-
-
-
 idpr_parallel_processing <- function(
+    sequences,
     idpr_functions,
-    valid_functions,
-    input,
-    BPPARAM = parallel_backend()
+    accessions = NULL,
+    BPPARAM = BiocParallel::bpparam()
 ) {
-  # Convert input list to data.frame
-  input_df <- data.frame(
-    accession = names(input),
-    sequence  = unlist(input),
-    stringsAsFactors = FALSE
-  )
 
-  # Clean sequences
-  input_df$sequence <- cleaned_protein_seq_aa(input_df$sequence, warn = TRUE)
-
-  # Validate requested functions
-  validate_idpr_functions(
-    idpr_functions = idpr_functions,
-    valid_functions = valid_functions,
-    accessions = input_df$accession,
-    sequences = input_df$sequence,
-    input = input_df
-  )
-
-  # Map function names to actual idpr functions
-  func_map <- list(
-    idprofile              = idpr::idprofile,
-    iupred                 = idpr::iupred,
-    iupredAnchor           = idpr::iupredAnchor,
-    iupredRedox            = idpr::iupredRedox,
-    chargeCalculationLocal = idpr::chargeCalculationLocal,
-    chargeCalculationGlobal= idpr::chargeCalculationGlobal,
-    foldIndexR             = idpr::foldIndexR,
-    scaledHydropathyLocal  = idpr::scaledHydropathyLocal,
-    meanScaledHydropathy   = idpr::meanScaledHydropathy
-  )
-
-  # Worker function for each sequence
-  worker_fun <- function(i, df, funcs, fmap) {
-    # Ensure needed namespaces inside worker
-    requireNamespace("stats", quietly = TRUE)
-    requireNamespace("Biostrings", quietly = TRUE)
-    requireNamespace("IDPsBio", quietly = TRUE)
-
-    row <- df[i, , drop = FALSE]
-    out <- list(accession = row$accession)
-
-    # Apply each requested function to the sequence
-    for (fn in funcs) {
-      if (!fn %in% names(fmap)) {
-        out[[fn]] <- NA
-      } else {
-        out[[fn]] <- tryCatch(
-          fmap[[fn]](row$sequence),
-          error = function(e) {
-            warning("Function ", fn, " failed for accession ", row$accession, ": ", e$message)
-            NA
-          }
-        )
-      }
-    }
-    out
+  # --- Load idpr namespace for safety ---
+  if (!requireNamespace("idpr", quietly = TRUE)) {
+    stop("The 'idpr' package must be installed.", call. = FALSE)
   }
 
-  # Run in parallel
-  results_raw <- tryCatch({
-    BiocParallel::bplapply(
-      seq_len(nrow(input_df)),
-      worker_fun,
-      df    = input_df,
-      funcs = idpr_functions,
-      fmap  = func_map,
-      BPPARAM = BPPARAM
+  # --- Input handling -------------------------------------------------------
+
+  # Convert AAStringSet → character
+  if (inherits(sequences, "AAStringSet")) {
+    accessions <- names(sequences)
+    sequences  <- as.character(sequences)
+  }
+
+  # Data.frame input
+  if (is.data.frame(sequences)) {
+    stop("Pass df$sequence, not the whole data.frame, to `sequences`.", call. = FALSE)
+  }
+
+  # Named character vector input
+  if (is.null(accessions)) {
+    if (!is.null(names(sequences))) {
+      accessions <- names(sequences)
+    } else {
+      stop("Accessions must be supplied or sequences must be named.")
+    }
+  }
+
+  # --- Clean sequences + accessions ----------------------------------------
+
+  cleaned <- clean_sequences_and_accessions(
+    sequences = sequences,
+    accessions = accessions,
+    warn = TRUE
+  )
+
+  sequences  <- cleaned$sequences
+  accessions <- cleaned$accessions
+
+  # --- Classify idpr functions ---------------------------------------------
+
+  numeric_functions <- c(
+    "idprofile",
+    "iupred", "iupredAnchor", "iupredRedox",
+    "chargeCalculationLocal", "chargeCalculationGlobal",
+    "netCharge",
+    "scaledHydropathyLocal", "scaledHydropathyGlobal",
+    "meanScaledHydropathy",
+    "foldIndexR"
+  )
+
+  plot_functions <- c(
+    "chargeHydropathyPlot", "sequencePlot",
+    "sequenceMap", "sequenceMapCoordinates",
+    "structuralTendencyPlot"
+  )
+
+  # Validate names
+  valid <- c(numeric_functions, plot_functions)
+  invalid <- setdiff(idpr_functions, valid)
+  if (length(invalid) > 0) {
+    stop(sprintf(
+      "Invalid idpr functions: %s",
+      paste(invalid, collapse = ", ")
+    ))
+  }
+
+  # --- Safe wrapper to call idpr functions ----------------------------------
+
+  run_idpr_func_safe <- function(func_name, sequence, uniprotAccession) {
+
+    func <- tryCatch(
+      get(func_name, asNamespace("idpr")),
+      error = function(e) NULL
     )
-  }, error = function(e) {
-    # Warn and fallback to serial if parallel fails
-    warning("Parallel run failed: ", conditionMessage(e),
-            "; falling back to serial processing.")
-    NULL
-  })
 
-  # Fallback to serial processing if parallel failed
-  if (is.null(results_raw)) {
-    results_raw <- lapply(
-      seq_len(nrow(input_df)),
-      function(i) worker_fun(i, input_df, idpr_functions, func_map)
+    if (is.null(func)) {
+      warning("Function not found in idpr: ", func_name)
+      return(NULL)
+    }
+
+    # Try all argument combinations
+    attempts <- list(
+      list(sequence = sequence, uniprotAccession = uniprotAccession),
+      list(sequence = sequence),
+      list(uniprotAccession = uniprotAccession)
     )
+
+    for (a in attempts) {
+      out <- tryCatch(
+        do.call(func, a),
+        error = function(e) e
+      )
+      if (!inherits(out, "error"))
+        return(out)
+    }
+
+    warning(sprintf(
+      "Skipping '%s': no valid argument combination worked.",
+      func_name
+    ))
+    return(NULL)
   }
 
-  # Ensure every element is a list with all requested functions
-  results <- lapply(results_raw, function(el) {
-    if (!is.list(el)) {
-      el <- list(accession = NA)
-    }
-    for (fn in idpr_functions) {
-      if (!fn %in% names(el)) el[[fn]] <- NA
-    }
-    el
-  })
+  # --- Parallel execution ---------------------------------------------------
 
-  # Warn if any workers failed
-  failed <- sapply(results_raw, function(el) !is.list(el))
-  if (any(failed)) {
-    warning(sum(failed), " of ", length(results),
-            " parallel tasks failed or returned invalid results.")
-  }
+  results <- BiocParallel::bplapply(seq_along(sequences), function(i) {
 
-  # Convert results to data.frame
-  results_df <- do.call(rbind, lapply(results, function(x) {
-    # Ensure order: accession first, then functions
-    c(accession = x$accession, unlist(x[idpr_functions]))
-  }))
+    seq_i <- sequences[i]
+    acc_i <- accessions[i]
 
-  rownames(results_df) <- NULL
-  as.data.frame(results_df, stringsAsFactors = FALSE)
+    # Numeric
+    numeric_out <- lapply(
+      intersect(idpr_functions, numeric_functions),
+      run_idpr_func_safe,
+      sequence = seq_i,
+      uniprotAccession = acc_i
+    )
+    numeric_out <- numeric_out[!sapply(numeric_out, is.null)]
+    names(numeric_out) <- names(numeric_out)[!sapply(numeric_out, is.null)]
+
+    # Plots
+    plot_out <- lapply(
+      intersect(idpr_functions, plot_functions),
+      run_idpr_func_safe,
+      sequence = seq_i,
+      uniprotAccession = acc_i
+    )
+    plot_out <- plot_out[!sapply(plot_out, is.null)]
+    names(plot_out) <- names(plot_out)[!sapply(plot_out, is.null)]
+
+    list(
+      numeric = numeric_out,
+      plots = plot_out
+    )
+  }, BPPARAM = BPPARAM)
+
+  names(results) <- accessions
+  return(results)
 }

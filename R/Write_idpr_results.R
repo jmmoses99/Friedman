@@ -1,86 +1,74 @@
-#' Function to combine all protein computation results in one file (.csv or .xlsx) organized by each protein (row)
-#' and each function result becomes a column
+#' Write combined IDPR results
 #'
-#' Writes the aggregated results from multiple IDPR functions to disk.
+#' This function writes processed IDPR results to a file. It accepts only
+#' numeric (single values), NA, or S3 lists. S4, S7, and ggplot objects are
+#' rejected. Missing columns or rows are filled with NA to ensure consistent output.
 #'
-#' @param results List of results from `idpr_parallel_processing()`.
-#' @param out_file Character, path to output file.
-#' @param file_type Character, format to save ("csv" or "xlsx").
-#' @param expected_functions Character vector of IDPR functions expected in the results.
-#'
-#' @return Invisibly returns the path to the written file.
-#'
-#' @examples
-#' \donttest{
-#' # Minimal fake results mimicking actual output
-#' results <- list(
-#'   list(
-#'     accession = "P12345",
-#'     idprofile = NA,
-#'     chargeCalculationLocal = data.frame(
-#'       Position = 5,
-#'       CenterResidue = "F",
-#'       Window = "MKTFFVAGA",
-#'       windowCharge = 0.11
-#'     )
-#'   )
-#' )
-#'
-#' # Use a temporary file to avoid creating files in the check directory
-#' tmp_file <- tempfile(fileext = ".csv")
-#' write_combined_idpr_results(
-#'   results = results,
-#'   out_file = tmp_file,
-#'   file_type = "csv",
-#'   expected_functions = c("idprofile", "chargeCalculationLocal")
-#' )
-#' }
-#'
+#' @param results A named list of processed results (numeric(1), NA, or S3 list).
+#' @param out_file Output file path (xlsx or csv supported).
+#' @param file_type File type: "xlsx" or "csv".
+#' @param expected_functions Optional character vector of expected function names.
+#' @importFrom utils write.csv
 #' @export
 write_combined_idpr_results <- function(results,
-                                        out_file = "combined_idpr_results.csv",
-                                        file_type = "csv",
-                                        expected_functions = c(
-                                          "idprofile", "iupred", "iupredAnchor", "iupredRedox",
-                                          "chargeCalculationLocal", "chargeCalculationGlobal",
-                                          "foldIndexR", "scaledHydropathyLocal", "meanScaledHydropathy"
-                                        )) {
+                                        out_file,
+                                        file_type = c("xlsx", "csv"),
+                                        expected_functions = NULL) {
 
-  #  Convert list of lists to data frame
-  results_df <- do.call(rbind, lapply(results, as.data.frame, stringsAsFactors = FALSE))
+  file_type <- match.arg(file_type)
 
-  #  Ensure all expected columns exist (fill missing columns with NA)
-  expected_cols <- c(intersect(c("accession","name"), colnames(results_df)), expected_functions)
-  missing_cols <- setdiff(expected_cols, colnames(results_df))
-  if (length(missing_cols) > 0) {
-    results_df[missing_cols] <- NA
+  # --- internal validator ---
+  validate_value <- function(val, acc = NULL, fname = NULL) {
+    if ((is.numeric(val) && length(val) == 1) || (is.na(val) && length(val) == 1)) return(TRUE)
+    if (is.list(val) && !isS4(val)) return(TRUE)
+    stop(sprintf(
+      "Invalid value detected%s%s: Only numeric(1), NA, or S3 list objects are allowed.",
+      if (!is.null(acc)) paste0(" for accession '", acc, "'") else "",
+      if (!is.null(fname)) paste0(" in function '", fname, "'") else ""
+    ))
   }
 
-  #  Dynamic row sorting
-  # Sorts rows by accession if it exists; then by name; or the first column
-  if ("accession" %in% colnames(results_df)) {
-    results_df <- results_df[order(results_df$accession), ]
-  } else if ("name" %in% colnames(results_df)) {
-    results_df <- results_df[order(results_df$name), ]
-  } else {
-    results_df <- results_df[order(results_df[[1]]), ]
-  }
+  # --- validate each element ---
+  lapply(results, validate_value)
 
-  # Column ordering
-  # Ensures only columns present in the data frame are selected (avoids errors)
-  results_df <- results_df[, intersect(expected_cols, colnames(results_df))]
+  # --- convert each result into a row (data.frame) ---
+  df_list <- lapply(names(results), function(nm) {
+    val <- results[[nm]]
 
-  # Write file type into either a csv or an xlsx
+    if (is.null(val)) val <- NA  # replace NULL with NA
+
+    if (is.numeric(val) || is.na(val)) {
+      data.frame(accession = nm, value = val, stringsAsFactors = FALSE)
+    } else if (is.list(val)) {
+      # flatten simple named lists into a single-row data.frame
+      df <- as.data.frame(val, stringsAsFactors = FALSE)
+      df$accession <- nm
+      df
+    } else {
+      # should never get here due to validation
+      stop("Unexpected value type")
+    }
+  })
+
+  # --- align columns ---
+  all_cols <- unique(unlist(lapply(df_list, names)))
+  df_list <- lapply(df_list, function(df) {
+    missing <- setdiff(all_cols, names(df))
+    for (col in missing) df[[col]] <- NA
+    df[all_cols]  # reorder columns
+  })
+
+  combined_df <- do.call(rbind, df_list)
+
+  # --- write output ---
   if (file_type == "csv") {
-    utils::write.csv(results_df, out_file, row.names = FALSE)
+    write.csv(combined_df, out_file, row.names = FALSE)
   } else if (file_type == "xlsx") {
-    openxlsx::write.xlsx(results_df, out_file, rowNames = FALSE)
-  } else {
-    stop("Unsupported file_type. Use 'csv' or 'xlsx'.")
+    if (!requireNamespace("openxlsx", quietly = TRUE)) {
+      stop("Package 'openxlsx' required for writing xlsx files")
+    }
+    openxlsx::write.xlsx(combined_df, out_file, rowNames = FALSE)
   }
 
-  # Feedback & return
-  # Provides a message that combined results were saved and the path they were saved
-  message("Combined results saved to: ", normalizePath(out_file))
-  invisible(results_df)  # return the combined data frame invisibly
+  invisible(combined_df)
 }

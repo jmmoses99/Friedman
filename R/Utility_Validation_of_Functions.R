@@ -1,107 +1,127 @@
-#Utility Function to ensure the validation of correct idpr functions using either a data.frame or FASTA
+#'@keywords internal
+validate_idpr_functions <- function(idpr_functions,
+                                    input = NULL,
+                                    accessions = NULL,
+                                    sequences = NULL) {
 
-#' @keywords internal
+  # -------------------------------------------------
+  # 1. Valid idpr function sets
+  # -------------------------------------------------
+  numeric_functions <- c(
+    "idprofile", "iupred", "iupredAnchor", "iupredRedox",
+    "chargeCalculationLocal", "chargeCalculationGlobal",
+    "netCharge",
+    "scaledHydropathyGlobal", "scaledHydropathyLocal",
+    "meanScaledHydropathy",
+    "foldIndexR"
+  )
 
-#Argument validation Function for idpr Function names
+  plot_functions <- c(
+    "chargeHydropathyPlot", "sequencePlot", "structuralTendencyPlot",
+    "sequenceMap", "sequenceMapCoordinates"
+  )
 
-validate_idpr_functions <- function(idpr_functions, valid_functions, input, accessions, sequences) {
+  valid_functions <- c(numeric_functions, plot_functions)
 
-  # Validate function names
-  invalid_functions <- setdiff(idpr_functions, valid_functions)
-  if (length(invalid_functions) > 0) {
+  # -------------------------------------------------
+  # 2. Validate requested function names
+  # -------------------------------------------------
+  invalid <- setdiff(idpr_functions, valid_functions)
+  if (length(invalid) > 0) {
     stop(
-      paste0(
-        "Invalid IDPR functions specified: ",
-        paste(invalid_functions, collapse = ", "),
-        ". Valid functions are: ",
-        paste(valid_functions, collapse = ", "),
-        "."
+      sprintf(
+        "Invalid IDPR functions specified: %s. Valid functions are: %s.",
+        paste(invalid, collapse = ", "),
+        paste(valid_functions, collapse = ", ")
       ),
       call. = FALSE
     )
   }
 
-  # Functions requiring UniProt accessions
-  required_accession <- c("idprofile", "iupred", "iupredAnchor", "iupredRedox")
-  needs_accession <- any(idpr_functions %in% required_accession)
+  # -------------------------------------------------
+  # 3. Functions requiring UniProt accessions
+  # -------------------------------------------------
+  must_use_accession <- c("idprofile", "iupred", "iupredAnchor", "iupredRedox")
 
-  # Validate accessions if needed
-  if (needs_accession) {
+  if (any(idpr_functions %in% must_use_accession)) {
     if (is.null(accessions)) {
       stop(
-        "The selected idpr functions require UniProt accessions, but 'accessions' was not supplied.",
+        paste(
+          "One or more selected idpr functions require UniProt accessions.",
+          "Provide 'accessions' when using:",
+          paste(must_use_accession, collapse = ", ")
+        ),
         call. = FALSE
       )
     }
-    if (!is.character(accessions)) {
-      stop("'accessions' must be a character vector.", call. = FALSE)
-    }
   }
 
-  # Validate sequences
+  # -------------------------------------------------
+  # 4. Validate sequences (after cleaning happens outside)
+  # -------------------------------------------------
   if (!is.null(sequences)) {
+
     if (!is.character(sequences)) {
       stop("'sequences' must be a character vector.", call. = FALSE)
     }
 
     if (!is.null(accessions) && length(sequences) != length(accessions)) {
-      stop(
-        paste0(
-          "Lengths of 'accessions' (", length(accessions),
-          ") and 'sequences' (", length(sequences), ") do not match."
-        ),
-        call. = FALSE
-      )
+      stop("'sequences' and 'accessions' must have equal length.", call. = FALSE)
     }
 
     if (any(is.na(sequences))) {
-      stop("Sequences cannot contain missing values (NA).", call. = FALSE)
+      stop("'sequences' cannot contain NA values.", call. = FALSE)
     }
   }
 
-  # Validate 'input'
+  # -------------------------------------------------
+  # 5. Validate input argument
+  # -------------------------------------------------
   if (!is.null(input)) {
 
-    # FASTA file path
+    # FASTA file
     if (is.character(input) && length(input) == 1 && file.exists(input)) {
-      # valid case → nothing to do
+      # valid
     }
 
-    # data.frame with accession + sequence
+    # Data.frame
     else if (is.data.frame(input)) {
+      req_cols <- c("accession", "sequence")
 
-      required_columns <- c("accession", "sequence")
-
-      if (!all(required_columns %in% names(input))) {
-        stop(
-          paste0(
-            "Input data.frame must contain columns: ",
-            paste(required_columns, collapse = ", ")
-          ),
-          call. = FALSE
-        )
+      if (!all(req_cols %in% names(input))) {
+        stop("Input data.frame must contain columns: accession, sequence.", call. = FALSE)
       }
 
       if (any(is.na(input$accession)) || any(is.na(input$sequence))) {
-        stop(
-          "Columns 'accession' and 'sequence' cannot contain NA values.",
-          call. = FALSE
-        )
+        stop("Columns 'accession' and 'sequence' cannot contain NA.", call. = FALSE)
       }
+    }
+
+    # Named character vector
+    else if (is.character(input)) {
+      if (is.null(names(input))) {
+        stop("Character vector input must be named: names = UniProt accessions.", call. = FALSE)
+      }
+    }
+
+    # AAStringSet
+    else if (inherits(input, "AAStringSet")) {
+      # valid
     }
 
     else {
       stop(
-        "'input' must be a FASTA file path or a data.frame with 'accession' and 'sequence' columns.",
+        "'input' must be: FASTA file, AAStringSet, named character vector, or data.frame.",
         call. = FALSE
       )
     }
   }
 
+  # -------------------------------------------------
+  # 6. Return validated lists
+  # -------------------------------------------------
+  list(
+    numeric_functions = intersect(idpr_functions, numeric_functions),
+    plot_functions    = intersect(idpr_functions, plot_functions)
+  )
 }
-
-
-
-
-
-

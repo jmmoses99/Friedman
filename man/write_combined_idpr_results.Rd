@@ -2,57 +2,26 @@
 % Please edit documentation in R/Write_idpr_results.R
 \name{write_combined_idpr_results}
 \alias{write_combined_idpr_results}
-\title{Function to combine all protein computation results in one file (.csv or .xlsx) organized by each protein (row)
-and each function result becomes a column}
+\title{Write combined IDPR results}
 \usage{
 write_combined_idpr_results(
   results,
-  out_file = "combined_idpr_results.csv",
-  file_type = "csv",
-  expected_functions = c("idprofile", "iupred", "iupredAnchor", "iupredRedox",
-    "chargeCalculationLocal", "chargeCalculationGlobal", "foldIndexR",
-    "scaledHydropathyLocal", "meanScaledHydropathy")
+  out_file,
+  file_type = c("xlsx", "csv"),
+  expected_functions = NULL
 )
 }
 \arguments{
-\item{results}{List of results from \code{idpr_parallel_processing()}.}
+\item{results}{A named list of processed results (numeric(1), NA, or S3 list).}
 
-\item{out_file}{Character, path to output file.}
+\item{out_file}{Output file path (xlsx or csv supported).}
 
-\item{file_type}{Character, format to save ("csv" or "xlsx").}
+\item{file_type}{File type: "xlsx" or "csv".}
 
-\item{expected_functions}{Character vector of IDPR functions expected in the results.}
-}
-\value{
-Invisibly returns the path to the written file.
+\item{expected_functions}{Optional character vector of expected function names.}
 }
 \description{
-Writes the aggregated results from multiple IDPR functions to disk.
-}
-\examples{
-\donttest{
-# Minimal fake results mimicking actual output
-results <- list(
-  list(
-    accession = "P12345",
-    idprofile = NA,
-    chargeCalculationLocal = data.frame(
-      Position = 5,
-      CenterResidue = "F",
-      Window = "MKTFFVAGA",
-      windowCharge = 0.11
-    )
-  )
-)
-
-# Use a temporary file to avoid creating files in the check directory
-tmp_file <- tempfile(fileext = ".csv")
-write_combined_idpr_results(
-  results = results,
-  out_file = tmp_file,
-  file_type = "csv",
-  expected_functions = c("idprofile", "chargeCalculationLocal")
-)
-}
-
+This function writes processed IDPR results to a file. It accepts only
+numeric (single values), NA, or S3 lists. S4, S7, and ggplot objects are
+rejected. Missing columns or rows are filled with NA to ensure consistent output.
 }

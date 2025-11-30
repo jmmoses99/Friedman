@@ -11,7 +11,7 @@ Description: This package provides additional functions for data analysis of int
          efficiently handle large proteome-scale data sets.
 Depends: 
     R (>= 3.5)
-Imports: idpr, BiocParallel,openxlsx,
+Imports: idpr, BiocParallel,openxlsx
 License: CC0
 LazyData: True
 URL: https://github.com/jmmoses99

@@ -1,5 +1,6 @@
 # Test parallel_backend function
 library(testthat)
+library(IDPsBio)
 
 test_that("parallel_backend returns a valid BiocParallelParam", {
   # Function for parallel processing
