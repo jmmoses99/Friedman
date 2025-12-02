@@ -10,3 +10,4 @@ This package provides additional functions for data analysis of intrinsically di
 
  Tests can be found in tests/testthat folders. I used the P53_Human_Protein for tests and it should be easy to load the data after installing all packages. I also included other protein data sets for the user to use if they would like.
  
+The IDPsBio R package uses both S3 and S4 objects. The protein data sets that I included are S4 objects. They can be read using Biostrings.
