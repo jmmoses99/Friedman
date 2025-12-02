@@ -8,5 +8,5 @@ This package provides additional functions for data analysis of intrinsically di
          Parallel processing is supported via the BiocParallel framework to
          efficiently handle large proteome-scale data sets.
 
- Tests can be found in tests/testthat folders.
+ Tests can be found in tests/testthat folders. I used the P53_Human_Protein for tests and it should be easy to load the data after installing all packages. I also included other protein data sets for the user to use if they would like.
  
